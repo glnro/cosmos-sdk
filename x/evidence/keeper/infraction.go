@@ -26,7 +26,8 @@ import (
 func (k Keeper) HandleEquivocationEvidence(ctx sdk.Context, evidence *types.Equivocation) {
 	logger := k.Logger(ctx)
 	consAddr := evidence.GetConsensusAddress()
-
+	logger.Debug("**************************************")
+	logger.Debug(fmt.Sprintf("ConsAddr %s", consAddr))
 	// calculate the age of the evidence
 	infractionHeight := evidence.GetHeight()
 	infractionTime := evidence.GetTime()
@@ -37,6 +38,8 @@ func (k Keeper) HandleEquivocationEvidence(ctx sdk.Context, evidence *types.Equi
 	// if the difference in time and number of blocks is greater than the allowed
 	// parameters defined.
 	cp := ctx.ConsensusParams()
+	logger.Debug("**************************************")
+	logger.Debug(fmt.Sprintf("Consensus Params %s", cp.String()))
 	if cp != nil && cp.Evidence != nil {
 		if ageDuration > cp.Evidence.MaxAgeDuration && ageBlocks > cp.Evidence.MaxAgeNumBlocks {
 			logger.Info(
@@ -50,6 +53,10 @@ func (k Keeper) HandleEquivocationEvidence(ctx sdk.Context, evidence *types.Equi
 			return
 		}
 	}
+
+	logger.Debug("**************************************")
+	logger.Debug("Calling k.stakingKeeper.ValidatorByConsAddr(ctx, consAddr)")
+	logger.Debug(fmt.Sprintf("Ctx chain id %s", ctx.ChainID()))
 
 	validator := k.stakingKeeper.ValidatorByConsAddr(ctx, consAddr)
 	if validator == nil || validator.IsUnbonded() {
