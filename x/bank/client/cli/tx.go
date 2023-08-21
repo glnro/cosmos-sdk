@@ -60,8 +60,10 @@ When using '--dry-run' a key name cannot be used, only a bech32 address.
 				return err
 			}
 
+			fmt.Println("⚛️APP :: x/bank/client/cli/tx.go :: Received CLI Bank Send")
 			msg := types.NewMsgSend(clientCtx.GetFromAddress(), toAddr, coins)
 
+			fmt.Println("⚛️APP :: x/bank/client/cli/tx.go :: Preparing to broadcast cli")
 			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
 		},
 	}

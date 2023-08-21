@@ -2,6 +2,7 @@ package keeper
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/armon/go-metrics"
 
@@ -26,11 +27,13 @@ func NewMsgServerImpl(keeper Keeper) types.MsgServer {
 
 func (k msgServer) Send(goCtx context.Context, msg *types.MsgSend) (*types.MsgSendResponse, error) {
 	ctx := sdk.UnwrapSDKContext(goCtx)
-
+	logger := k.Logger(ctx)
+	logger.Info(fmt.Sprintf("🚀 SDK :: x/bank/keeper/msg_server.go :: Preparing to Send: %v", msg.String()))
 	if err := k.IsSendEnabledCoins(ctx, msg.Amount...); err != nil {
 		return nil, err
 	}
 
+	logger.Info("🚀 SDK :: x/bank/keeper/msg_server.go :: Validating Bech32 addresses")
 	from, err := sdk.AccAddressFromBech32(msg.FromAddress)
 	if err != nil {
 		return nil, err
@@ -41,6 +44,7 @@ func (k msgServer) Send(goCtx context.Context, msg *types.MsgSend) (*types.MsgSe
 	}
 
 	if k.BlockedAddr(to) {
+		logger.Info("🚀 SDK :: x/bank/keeper/msg_server.go :: Address is blocked")
 		return nil, sdkerrors.Wrapf(sdkerrors.ErrUnauthorized, "%s is not allowed to receive funds", msg.ToAddress)
 	}
 
@@ -48,6 +52,7 @@ func (k msgServer) Send(goCtx context.Context, msg *types.MsgSend) (*types.MsgSe
 	if err != nil {
 		return nil, err
 	}
+	logger.Info("🚀 SDK :: x/bank/keeper/msg_server.go :: Sending coins")
 
 	defer func() {
 		for _, a := range msg.Amount {

@@ -40,6 +40,7 @@ func GenerateOrBroadcastTxWithFactory(clientCtx client.Context, txf Factory, msg
 	// Right now, we're factorizing that call inside this function.
 	// ref: https://github.com/cosmos/cosmos-sdk/pull/9236#discussion_r623803504
 	for _, msg := range msgs {
+		fmt.Println("⚛️ APP :: client/tx/tx.go :: Running Validate Basic")
 		if err := msg.ValidateBasic(); err != nil {
 			return err
 		}
@@ -58,7 +59,7 @@ func GenerateOrBroadcastTxWithFactory(clientCtx client.Context, txf Factory, msg
 	if clientCtx.GenerateOnly {
 		return txf.PrintUnsignedTx(clientCtx, msgs...)
 	}
-
+	fmt.Println("⚛️ APP :: client/tx/tx.go :: Broadcasing Tx")
 	return BroadcastTx(clientCtx, txf, msgs...)
 }
 
@@ -70,6 +71,7 @@ func BroadcastTx(clientCtx client.Context, txf Factory, msgs ...sdk.Msg) error {
 	if err != nil {
 		return err
 	}
+	fmt.Fprintf(os.Stdout, "⚛️ APP :: client/tx/tx.go :: Estimating Gas")
 
 	if txf.SimulateAndExecute() || clientCtx.Simulate {
 		if clientCtx.Offline {
@@ -128,6 +130,7 @@ func BroadcastTx(clientCtx client.Context, txf Factory, msgs ...sdk.Msg) error {
 	if err != nil {
 		return err
 	}
+	fmt.Fprintf(os.Stdout, fmt.Sprintf("⚛️ APP ::  client/tx/tx.go :: Broadcasted Tx to Comet :: Tx Bytes: %s", string(txBytes)))
 
 	return clientCtx.PrintProto(res)
 }

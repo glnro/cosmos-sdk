@@ -355,7 +355,7 @@ func (app *BaseApp) ProcessProposal(req abci.RequestProcessProposal) (resp abci.
 // the ResponseCheckTx will contain relevant gas execution context.
 func (app *BaseApp) CheckTx(req abci.RequestCheckTx) abci.ResponseCheckTx {
 	var mode runTxMode
-
+	app.logger.Info(fmt.Sprintf("🚀 SDK :: baseapp/abci.go :: Running CheckTx on transaction from Comet: %s", string(req.Tx)))
 	switch {
 	case req.Type == abci.CheckTxType_New:
 		mode = runTxModeCheck
@@ -366,12 +366,12 @@ func (app *BaseApp) CheckTx(req abci.RequestCheckTx) abci.ResponseCheckTx {
 	default:
 		panic(fmt.Sprintf("unknown RequestCheckTx type: %s", req.Type))
 	}
-
+	app.logger.Info(fmt.Sprintf("🚀 SDK :: baseapp/abci.go :: Simulating runTx with checkTx mode on transaction from Comet: %s", string(req.Tx)))
 	gInfo, result, anteEvents, priority, err := app.runTx(mode, req.Tx)
 	if err != nil {
 		return sdkerrors.ResponseCheckTxWithEvents(err, gInfo.GasWanted, gInfo.GasUsed, anteEvents, app.trace)
 	}
-
+	app.logger.Info(fmt.Sprintf("🚀 SDK :: baseapp/abci.go :: Results of running runTx with checkMode: %s", result.String()))
 	return abci.ResponseCheckTx{
 		GasWanted: int64(gInfo.GasWanted), // TODO: Should type accept unsigned ints?
 		GasUsed:   int64(gInfo.GasUsed),   // TODO: Should type accept unsigned ints?
@@ -391,6 +391,7 @@ func (app *BaseApp) DeliverTx(req abci.RequestDeliverTx) (res abci.ResponseDeliv
 	gInfo := sdk.GasInfo{}
 	resultStr := "successful"
 
+	app.logger.Info(fmt.Sprintf("🚀 SDK :: baseapp/abci.go :: Running DeliverTx on transaction from Comet: %s", string(req.Tx)))
 	defer func() {
 		for _, streamingListener := range app.abciListeners {
 			if err := streamingListener.ListenDeliverTx(app.deliverState.ctx, req, res); err != nil {
@@ -398,7 +399,7 @@ func (app *BaseApp) DeliverTx(req abci.RequestDeliverTx) (res abci.ResponseDeliv
 			}
 		}
 	}()
-
+	app.logger.Info(fmt.Sprintf("🚀 SDK :: baseapp/abci.go :: Running runTx in runTxModeDeliver on transaction from Comet: %s", string(req.Tx)))
 	defer func() {
 		telemetry.IncrCounter(1, "tx", "count")
 		telemetry.IncrCounter(1, "tx", resultStr)

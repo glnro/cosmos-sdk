@@ -2,6 +2,7 @@ package keeper
 
 import (
 	"fmt"
+	"github.com/cometbft/cometbft/libs/log"
 
 	gogotypes "github.com/cosmos/gogoproto/types"
 
@@ -41,6 +42,7 @@ type SendKeeper interface {
 	GetBlockedAddresses() map[string]bool
 
 	GetAuthority() string
+	Logger(ctx sdk.Context) log.Logger
 }
 
 var _ SendKeeper = (*BaseSendKeeper)(nil)
@@ -190,11 +192,14 @@ func (k BaseSendKeeper) InputOutputCoins(ctx sdk.Context, inputs []types.Input, 
 // SendCoins transfers amt coins from a sending account to a receiving account.
 // An error is returned upon failure.
 func (k BaseSendKeeper) SendCoins(ctx sdk.Context, fromAddr sdk.AccAddress, toAddr sdk.AccAddress, amt sdk.Coins) error {
+	logger := k.Logger(ctx)
+	logger.Info(fmt.Sprintf("🚀 SDK :: x/bank/keeper/send.go :: Subtracting unlocked coins %v from balance for %v", amt.String(), fromAddr.String()))
 	err := k.subUnlockedCoins(ctx, fromAddr, amt)
 	if err != nil {
 		return err
 	}
 
+	logger.Info(fmt.Sprintf("🚀 SDK :: x/bank/keeper/send.go :: Adding coins %v to balance for %v", amt.String(), toAddr.String()))
 	err = k.addCoins(ctx, toAddr, amt)
 	if err != nil {
 		return err
@@ -204,6 +209,7 @@ func (k BaseSendKeeper) SendCoins(ctx sdk.Context, fromAddr sdk.AccAddress, toAd
 	//
 	// NOTE: This should ultimately be removed in favor a more flexible approach
 	// such as delegated fee messages.
+	logger.Info(fmt.Sprintf("🚀 SDK :: x/bank/keeper/send.go :: Check if recipient %v has an account, if not create one and persist to AccountKeeper.", toAddr.String()))
 	accExists := k.ak.HasAccount(ctx, toAddr)
 	if !accExists {
 		defer telemetry.IncrCounter(1, "new", "account")
@@ -211,6 +217,7 @@ func (k BaseSendKeeper) SendCoins(ctx sdk.Context, fromAddr sdk.AccAddress, toAd
 	}
 
 	// bech32 encoding is expensive! Only do it once for fromAddr
+	logger.Info(fmt.Sprintf("🚀 SDK :: x/bank/keeper/send.go :: Emit Event: %v", types.EventTypeTransfer))
 	fromAddrString := fromAddr.String()
 	ctx.EventManager().EmitEvents(sdk.Events{
 		sdk.NewEvent(
@@ -520,4 +527,8 @@ func (k BaseSendKeeper) getSendEnabledOrDefault(store sdk.KVStore, denom string,
 	}
 
 	return defaultVal
+}
+
+func (k BaseSendKeeper) Logger(ctx sdk.Context) log.Logger {
+	return ctx.Logger().With("module", "x/"+types.ModuleName)
 }

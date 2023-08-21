@@ -626,16 +626,17 @@ func (app *BaseApp) runTx(mode runTxMode, txBytes []byte) (gInfo sdk.GasInfo, re
 	// determined by the GasMeter. We need access to the context to get the gas
 	// meter, so we initialize upfront.
 	var gasWanted uint64
-
+	app.logger.Info(fmt.Sprintf("🚀 SDK :: Running runTx with %s on transaction from Comet: %s", string(mode), string(txBytes)))
 	ctx := app.getContextForTx(mode, txBytes)
 	ms := ctx.MultiStore()
-
+	app.logger.Info("🚀 SDK :: Retrieving context and multistore")
 	// only run the tx if there is block gas remaining
 	if mode == runTxModeDeliver && ctx.BlockGasMeter().IsOutOfGas() {
 		return gInfo, nil, nil, 0, sdkerrors.Wrap(sdkerrors.ErrOutOfGas, "no block gas left to run tx")
 	}
 
 	defer func() {
+		app.logger.Info("🚀 SDK :: Simulating Gas")
 		if r := recover(); r != nil {
 			recoveryMW := newOutOfGasRecoveryMiddleware(gasWanted, ctx, app.runTxRecoveryMiddleware)
 			err, result = processRecovery(r, recoveryMW), nil
@@ -677,8 +678,10 @@ func (app *BaseApp) runTx(mode runTxMode, txBytes []byte) (gInfo sdk.GasInfo, re
 	if err := validateBasicTxMsgs(msgs); err != nil {
 		return sdk.GasInfo{}, nil, nil, 0, err
 	}
+	app.logger.Info(fmt.Sprintf("🚀 SDK :: Decoded Transaction: %v", msgs[0].String()))
 
 	if app.anteHandler != nil {
+		app.logger.Info("Check ante handlers")
 		var (
 			anteCtx sdk.Context
 			msCache sdk.CacheMultiStore
@@ -693,7 +696,9 @@ func (app *BaseApp) runTx(mode runTxMode, txBytes []byte) (gInfo sdk.GasInfo, re
 		// performance benefits, but it'll be more difficult to get right.
 		anteCtx, msCache = app.cacheTxContext(ctx, txBytes)
 		anteCtx = anteCtx.WithEventManager(sdk.NewEventManager())
+		app.logger.Info("Simulating tx to antehandler")
 		newCtx, err := app.anteHandler(anteCtx, tx, mode == runTxModeSimulate)
+		app.logger.Info("Simulating tx to antehandler")
 
 		if !newCtx.IsZero() {
 			// At this point, newCtx.MultiStore() is a store branch, or something else
@@ -720,6 +725,7 @@ func (app *BaseApp) runTx(mode runTxMode, txBytes []byte) (gInfo sdk.GasInfo, re
 	}
 
 	if mode == runTxModeCheck {
+		app.logger.Info("RunTxModeCheck passed, inserting into app side mempool")
 		err = app.mempool.Insert(ctx, tx)
 		if err != nil {
 			return gInfo, nil, anteEvents, priority, err
@@ -771,7 +777,7 @@ func (app *BaseApp) runTx(mode runTxMode, txBytes []byte) (gInfo sdk.GasInfo, re
 			result.Events = append(anteEvents, result.Events...)
 		}
 	}
-
+	app.logger.Info(fmt.Sprintf("🚀 SDK :: Returning results from runTx: %s", result.String()))
 	return gInfo, result, anteEvents, priority, err
 }
 
@@ -781,6 +787,7 @@ func (app *BaseApp) runTx(mode runTxMode, txBytes []byte) (gInfo sdk.GasInfo, re
 // Handler does not exist for a given message route. Otherwise, a reference to a
 // Result is returned. The caller must not commit state if an error is returned.
 func (app *BaseApp) runMsgs(ctx sdk.Context, msgs []sdk.Msg, mode runTxMode) (*sdk.Result, error) {
+	app.logger.Info("Executing Run Msgs")
 	msgLogs := make(sdk.ABCIMessageLogs, 0, len(msgs))
 	events := sdk.EmptyEvents()
 	var msgResponses []*codectypes.Any
